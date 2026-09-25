@@ -1,0 +1,29 @@
+{
+  "name": "maraki-bet",
+  "private": true,
+  "packageManager": "pnpm@10.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @maraki/api --filter @maraki/web --filter @maraki/admin dev",
+    "dev:api": "pnpm --filter @maraki/api dev",
+    "dev:web": "pnpm --filter @maraki/web dev",
+    "dev:admin": "pnpm --filter @maraki/admin dev",
+    "build": "pnpm --filter @maraki/shared build && pnpm --filter @maraki/api build && pnpm --filter @maraki/web build && pnpm --filter @maraki/admin build",
+    "db:up": "docker compose up -d",
+    "db:generate": "pnpm --filter @maraki/api db:generate",
+    "db:migrate": "pnpm --filter @maraki/api db:migrate",
+    "db:push": "pnpm --filter @maraki/api db:push",
+    "sync": "pnpm --filter @maraki/api sync",
+    "seed:admin": "pnpm --filter @maraki/api seed:admin"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "prisma",
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild"
+    ]
+  }
+}

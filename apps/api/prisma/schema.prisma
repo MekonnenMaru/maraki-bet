@@ -1,0 +1,350 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Sport {
+  id           Int          @id
+  provider     String       @default("oddspapi") @db.VarChar(32)
+  slug         String       @unique
+  name         String
+  enabled      Boolean      @default(true)
+  visible      Boolean      @default(true)
+  displayOrder Int          @default(0)
+  lastSyncedAt DateTime?
+  syncedAt     DateTime     @updatedAt
+  tournaments  Tournament[]
+  fixtures     Fixture[]
+  markets      Market[]
+
+  @@index([enabled, displayOrder])
+}
+
+model Tournament {
+  id           Int       @id
+  provider     String    @default("oddspapi") @db.VarChar(32)
+  sportId      Int
+  sport        Sport     @relation(fields: [sportId], references: [id])
+  slug         String
+  name         String
+  categorySlug String?
+  categoryName String?
+  enabled      Boolean   @default(true)
+  visible      Boolean   @default(true)
+  displayOrder Int       @default(0)
+  lastSyncedAt DateTime?
+  syncedAt     DateTime  @updatedAt
+  fixtures     Fixture[]
+
+  @@unique([sportId, slug])
+  @@index([sportId])
+  @@index([enabled, visible])
+}
+
+model Participant {
+  id           Int       @id
+  provider     String    @default("oddspapi") @db.VarChar(32)
+  name         String
+  shortName    String?
+  abbr         String?
+  lastSyncedAt DateTime?
+  syncedAt     DateTime  @updatedAt
+  homeFixtures Fixture[] @relation("HomeParticipant")
+  awayFixtures Fixture[] @relation("AwayParticipant")
+}
+
+model Fixture {
+  id                   String       @id @db.VarChar(64)
+  provider             String       @default("oddspapi") @db.VarChar(32)
+  sportId              Int
+  sport                Sport        @relation(fields: [sportId], references: [id])
+  tournamentId         Int
+  tournament           Tournament   @relation(fields: [tournamentId], references: [id])
+  seasonId             Int?
+  seasonName           String?
+  homeId               Int?
+  home                 Participant? @relation("HomeParticipant", fields: [homeId], references: [id])
+  awayId               Int?
+  away                 Participant? @relation("AwayParticipant", fields: [awayId], references: [id])
+  startTime            DateTime
+  statusId             Int          @default(0)
+  statusName           String?
+  manualStatusOverride String?      @db.VarChar(32)
+  venueName            String?
+  homeScore            Int?
+  awayScore            Int?
+  scoresJson           Json?
+  clockJson            Json?
+  visible              Boolean      @default(true)
+  bettingEnabled       Boolean      @default(true)
+  lastSyncedAt         DateTime?
+  syncedAt             DateTime     @updatedAt
+
+  @@index([sportId, startTime])
+  @@index([tournamentId, startTime])
+  @@index([statusId, startTime])
+  @@index([visible, bettingEnabled])
+}
+
+model Market {
+  id             Int       @id
+  provider       String    @default("oddspapi") @db.VarChar(32)
+  sportId        Int
+  sport          Sport     @relation(fields: [sportId], references: [id])
+  name           String
+  nameShort      String?
+  marketType     String
+  period         String?
+  handicap       Decimal?  @db.Decimal(10, 3)
+  marketLength   Int?
+  playerProp     Boolean   @default(false)
+  enabled        Boolean   @default(true)
+  visible        Boolean   @default(true)
+  bettingEnabled Boolean   @default(true)
+  displayOrder   Int       @default(0)
+  lastSyncedAt   DateTime?
+  syncedAt       DateTime  @updatedAt
+  outcomes       Outcome[]
+
+  @@index([sportId, marketType])
+  @@index([enabled, visible])
+}
+
+model Outcome {
+  id           Int      @id
+  provider     String   @default("oddspapi") @db.VarChar(32)
+  marketId     Int
+  market       Market   @relation(fields: [marketId], references: [id], onDelete: Cascade)
+  name         String
+  lastSyncedAt DateTime?
+  syncedAt     DateTime @updatedAt
+
+  @@index([marketId])
+}
+
+model Bookmaker {
+  slug      String   @id @db.VarChar(64)
+  name      String
+  active    Boolean  @default(true)
+  wsPregame Boolean?
+  wsLive    Boolean?
+  syncedAt  DateTime @updatedAt
+}
+
+model SyncState {
+  key       String   @id @db.VarChar(64)
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+}
+
+model SyncConfiguration {
+  id               Int       @id @default(1)
+  masterEnabled    Boolean   @default(true)
+  automaticEnabled Boolean   @default(false)
+  scheduleType     String    @default("INTERVAL") @db.VarChar(16)
+  intervalValue    Int       @default(5)
+  intervalUnit     String    @default("MINUTES") @db.VarChar(16)
+  timezone         String    @default("Africa/Nairobi") @db.VarChar(64)
+  retryEnabled     Boolean   @default(true)
+  maxRetries       Int       @default(3)
+  lastRunAt        DateTime?
+  nextRunAt        DateTime?
+  lastSuccessAt    DateTime?
+  lastError        String?   @db.VarChar(500)
+  updatedAt        DateTime  @updatedAt
+}
+
+model SyncJob {
+  id              String    @id @default(cuid())
+  type            String    @db.VarChar(16)
+  trigger         String    @db.VarChar(16)
+  scope           String    @db.VarChar(32)
+  scopeId         String?   @db.VarChar(64)
+  status          String    @db.VarChar(16)
+  resourcesJson   Json?
+  progressPct     Int       @default(0)
+  currentStep     String?   @db.VarChar(64)
+  progressMessage String?   @db.VarChar(255)
+  progressLog     Json?
+  pauseRequested  Boolean   @default(false)
+  cancelRequested Boolean   @default(false)
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  durationMs      Int?
+  createdCount    Int       @default(0)
+  updatedCount    Int       @default(0)
+  skippedCount    Int       @default(0)
+  failedCount     Int       @default(0)
+  errorMessage    String?   @db.Text
+  resultJson      Json?
+  startedBy       String?   @db.VarChar(64)
+
+  @@index([startedAt])
+  @@index([status, startedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?  @db.VarChar(64)
+  actorName  String?  @db.VarChar(64)
+  action     String   @db.VarChar(64)
+  resource   String   @db.VarChar(64)
+  resourceId String?  @db.VarChar(64)
+  oldValue   Json?
+  newValue   Json?
+  ip         String?  @db.VarChar(64)
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([resource, resourceId])
+}
+
+model User {
+  id           String        @id @default(cuid())
+  username     String        @unique @db.VarChar(64)
+  passwordHash String        @db.VarChar(255)
+  phone        String?       @unique @db.VarChar(32)
+  role         String        @default("PLAYER") @db.VarChar(16)
+  status       String        @default("ACTIVE") @db.VarChar(16)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  sessions     Session[]
+  wallet       Wallet?
+  ledger       LedgerEntry[]
+  bets         Bet[]
+  agentProfile AgentProfile?
+  shopSale     ShopSale?
+}
+
+model AgentProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  displayName     String   @db.VarChar(128)
+  code            String?  @unique @db.VarChar(32)
+  phone           String?  @db.VarChar(32)
+  status          String   @default("ACTIVE") @db.VarChar(16)
+  permissionsJson Json?
+  notes           String?  @db.VarChar(255)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  shops           Shop[]
+
+  @@index([status])
+}
+
+model Shop {
+  id              String       @id @default(cuid())
+  agentId         String
+  agent           AgentProfile @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  name            String       @db.VarChar(128)
+  code            String?      @db.VarChar(32)
+  address         String?      @db.VarChar(255)
+  phone           String?      @db.VarChar(32)
+  status          String       @default("ACTIVE") @db.VarChar(16)
+  permissionsJson Json?
+  notes           String?      @db.VarChar(255)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  sales           ShopSale[]
+
+  @@index([agentId, status])
+  @@unique([agentId, code])
+}
+
+/// Cashier / sales desk belonging to a shop
+model ShopSale {
+  id              String   @id @default(cuid())
+  shopId          String
+  shop            Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label           String   @db.VarChar(64)
+  code            String?  @db.VarChar(32)
+  status          String   @default("ACTIVE") @db.VarChar(16)
+  permissionsJson Json?
+  notes           String?  @db.VarChar(255)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([shopId, status])
+  @@unique([shopId, code])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique @db.VarChar(128)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Wallet {
+  userId    String   @id
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency  String   @default("ETB") @db.VarChar(8)
+  available Decimal  @default(0) @db.Decimal(18, 2)
+  locked    Decimal  @default(0) @db.Decimal(18, 2)
+  updatedAt DateTime @updatedAt
+}
+
+model LedgerEntry {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type         String   @db.VarChar(32)
+  amount       Decimal  @db.Decimal(18, 2)
+  balanceAfter Decimal  @db.Decimal(18, 2)
+  ref          String?  @db.VarChar(64)
+  note         String?  @db.VarChar(255)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model Bet {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  couponCode    String         @unique @db.VarChar(32)
+  type          String         @db.VarChar(16)
+  status        String         @default("ACCEPTED") @db.VarChar(16)
+  stake         Decimal        @db.Decimal(18, 2)
+  vat           Decimal        @db.Decimal(18, 2)
+  netStake      Decimal        @db.Decimal(18, 2)
+  combinedOdds  Decimal        @db.Decimal(12, 4)
+  bonus         Decimal        @default(0) @db.Decimal(18, 2)
+  possibleWin   Decimal        @db.Decimal(18, 2)
+  acceptChanges Boolean        @default(false)
+  payout        Decimal        @default(0) @db.Decimal(18, 2)
+  settledAt     DateTime?
+  createdAt     DateTime       @default(now())
+  selections    BetSelection[]
+
+  @@index([userId, createdAt])
+}
+
+model BetSelection {
+  id           String  @id @default(cuid())
+  betId        String
+  bet          Bet     @relation(fields: [betId], references: [id], onDelete: Cascade)
+  fixtureId    String  @db.VarChar(64)
+  marketId     Int
+  outcomeId    Int
+  playerId     Int     @default(0)
+  marketName   String  @db.VarChar(128)
+  selection    String  @db.VarChar(128)
+  fixtureLabel String  @db.VarChar(255)
+  placedOdds   Decimal @db.Decimal(12, 4)
+  status       String  @default("PENDING") @db.VarChar(16)
+
+  @@index([betId])
+  @@index([fixtureId])
+}

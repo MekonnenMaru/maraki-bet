@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE `Bet` ADD COLUMN `payout` DECIMAL(18, 2) NOT NULL DEFAULT 0,
+    ADD COLUMN `settledAt` DATETIME(3) NULL;
