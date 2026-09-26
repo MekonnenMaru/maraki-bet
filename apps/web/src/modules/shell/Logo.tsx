@@ -16,13 +16,13 @@ export function Logo() {
           strokeWidth="10"
           strokeLinecap="round"
         />
-        <g transform="translate(60 36)">
-          <circle r="13.2" fill="#fff" stroke="#1a1a1a" strokeWidth="1.5" />
-          <polygon points="0,-5.4 5.1,-1.8 3.2,4.6 -3.2,4.6 -5.1,-1.8" fill="#1a1a1a" />
+        <g className="logo-star" transform="translate(60 36)">
+          <circle r="13.2" fill="var(--color-surface-light)" stroke="var(--color-surface-6)" strokeWidth="1.5" />
+          <polygon points="0,-5.4 5.1,-1.8 3.2,4.6 -3.2,4.6 -5.1,-1.8" fill="var(--color-surface-6)" />
           <path
             d="M0-5.4 0-13.2M5.1-1.8 12.4-4.3M-5.1-1.8-12.4-4.3M3.2 4.6 7.6 11.6M-3.2 4.6-7.6 11.6"
             fill="none"
-            stroke="#1a1a1a"
+            stroke="var(--color-surface-6)"
             strokeWidth="1.25"
             strokeLinecap="round"
           />

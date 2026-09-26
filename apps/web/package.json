@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@maraki/shared": "workspace:*",
+    "@maraki/ui": "workspace:*",
     "next": "^15.5.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1"

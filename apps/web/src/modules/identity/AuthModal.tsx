@@ -18,10 +18,9 @@ export function AuthModal({
   const [localError, setLocalError] = useState("");
 
   return (
-    <div className="auth-overlay" onClick={onClose}>
+    <div className="auth-overlay">
       <form
         className="auth-card"
-        onClick={(event) => event.stopPropagation()}
         onSubmit={async (event) => {
           event.preventDefault();
           setBusy(true);
@@ -37,6 +36,9 @@ export function AuthModal({
           }
         }}
       >
+        <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+          ×
+        </button>
         <h2>{mode === "login" ? "Login" : "Register"}</h2>
         <label>
           Username
@@ -60,9 +62,6 @@ export function AuthModal({
         )}
         {(localError || error) && <p className="auth-error">{localError || error}</p>}
         <div className="auth-card-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
           <button type="submit" className="primary" disabled={busy}>
             {busy ? "Please wait..." : mode === "login" ? "Login" : "Create account"}
           </button>

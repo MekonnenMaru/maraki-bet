@@ -6,4 +6,6 @@ export * from "./betting";
 export * from "./slip-math";
 export * from "./settlement";
 export * from "./admin";
+export * from "./cashier";
 export * from "./time";
+

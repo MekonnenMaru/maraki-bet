@@ -9,6 +9,7 @@ import type {
 import { adminApi } from "@/lib/api";
 import { useAdminAuth } from "@/modules/auth/AuthProvider";
 import { TableState } from "@/modules/table/TableState";
+import { useNotify } from "@maraki/ui";
 
 type SectionLoad = {
   status: boolean;
@@ -17,6 +18,7 @@ type SectionLoad = {
 
 export default function OddsPapiPage() {
   const { session } = useAdminAuth();
+  const notify = useNotify();
   const [status, setStatus] = useState<AdminSyncStatusDto | null>(null);
   const [account, setAccount] = useState<AdminOddsPapiAccountDto | null>(null);
   const [language, setLanguage] = useState("");
@@ -127,6 +129,7 @@ export default function OddsPapiPage() {
     try {
       await navigator.clipboard.writeText(refreshed.apiKey);
       setCopied(true);
+      notify.success("Copied!");
     } catch {
       setError("Could not copy — select the key manually");
     }

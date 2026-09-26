@@ -9,14 +9,24 @@ export function CouponCard({
   bet: BetReceiptDto;
   onTestSettle?: (code: string, outcome: TestSettleOutcome) => Promise<void>;
 }) {
-  const settled = Boolean(bet.settledAt) || (bet.status !== "ACCEPTED" && bet.status !== "PENDING");
+  const settled =
+    Boolean(bet.settledAt) ||
+    (bet.status !== "ACCEPTED" &&
+      bet.status !== "PENDING" &&
+      bet.status !== "BOOKED" &&
+      bet.kind !== "BOOKED");
 
   return (
     <article className="coupon-card">
       <header>
         <b>{bet.couponCode}</b>
-        <span className={`bet-status ${bet.status.toLowerCase()}`}>{bet.status}</span>
+        <span className={`bet-status ${(bet.kind === "BOOKED" ? "booked" : bet.status).toLowerCase()}`}>
+          {bet.kind === "BOOKED" ? bet.status : bet.status}
+        </span>
       </header>
+      {bet.kind === "BOOKED" ? (
+        <p className="coupon-booked-note">Unpaid booking — take this ticket to a shop cashier.</p>
+      ) : null}
       <dl className="receipt-mini">
         <div>
           <dt>Type</dt>

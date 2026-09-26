@@ -13,6 +13,9 @@ importers:
       '@maraki/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@maraki/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.5.3
         version: 15.5.25(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -85,11 +88,45 @@ importers:
         specifier: ^5.8.3
         version: 5.9.3
 
+  apps/cashier:
+    dependencies:
+      '@maraki/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@maraki/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      next:
+        specifier: ^15.5.3
+        version: 15.5.25(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      react:
+        specifier: ^19.1.1
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@types/node':
+        specifier: ^24.5.2
+        version: 24.13.6
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.3.0
+      '@types/react-dom':
+        specifier: ^19.1.9
+        version: 19.3.0(@types/react@19.3.0)
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
   apps/web:
     dependencies:
       '@maraki/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@maraki/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
       next:
         specifier: ^15.5.3
         version: 15.5.25(@types/node@24.13.6)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -115,6 +152,22 @@ importers:
 
   packages/shared:
     devDependencies:
+      typescript:
+        specifier: ^5.8.3
+        version: 5.9.3
+
+  packages/ui:
+    dependencies:
+      react:
+        specifier: ^19.0.0
+        version: 19.3.0
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.3.0(react@19.3.0)
+    devDependencies:
+      '@types/react':
+        specifier: ^19.1.13
+        version: 19.3.0
       typescript:
         specifier: ^5.8.3
         version: 5.9.3

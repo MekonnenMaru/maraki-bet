@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const config: NextConfig = {
-  transpilePackages: ["@maraki/shared"],
+  transpilePackages: ["@maraki/shared", "@maraki/ui"],
   experimental: {
-    optimizePackageImports: ["@maraki/shared"],
+    optimizePackageImports: ["@maraki/shared", "@maraki/ui"],
   },
 };
 

@@ -1,13 +1,47 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import type { BetReceiptDto } from "@maraki/shared";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { BetReceiptDto, OutcomeQuoteDto } from "@maraki/shared";
 import { BONUS_MIN_LEGS, formatOdd, slipTotals } from "@maraki/shared";
+import { useNotify } from "@maraki/ui";
 import { api } from "@/lib/api";
 import { useAuth } from "@/modules/identity/AuthProvider";
 import { useLiveQuote } from "@/modules/odds/LiveOddsProvider";
 import { CouponCard } from "./CouponCard";
-import { useSlip } from "./SlipProvider";
+import { useSlip, type SlipPick } from "./SlipProvider";
+
+function receiptToPicks(receipt: BetReceiptDto): SlipPick[] {
+  return receipt.selections.flatMap((item) => {
+    if (
+      item.fixtureId == null ||
+      item.marketId == null ||
+      item.outcomeId == null ||
+      item.playerId == null
+    ) {
+      return [];
+    }
+    const price = Number(item.placedOdds) || 1;
+    const quote: OutcomeQuoteDto = {
+      outcomeId: item.outcomeId,
+      playerId: item.playerId,
+      marketId: item.marketId,
+      name: item.selection,
+      sourcePrice: price,
+      housePrice: price,
+      active: true,
+      changedAt: Date.now(),
+    };
+    return [
+      {
+        fixtureId: item.fixtureId,
+        label: item.fixtureLabel,
+        selection: item.selection,
+        marketName: item.marketName,
+        quote,
+      },
+    ];
+  });
+}
 
 function money(value: number) {
   return value.toFixed(2);
@@ -34,11 +68,38 @@ function SlipPickRow({
 }) {
   const live = useLiveQuote(fixtureId, outcomeId, playerId);
   const price = live && live.housePrice > 0 ? live.housePrice : fallbackPrice;
+  const [leaving, setLeaving] = useState(false);
+  const [oddFlash, setOddFlash] = useState<"up" | "down" | "">("");
+  const prevPrice = useRef(price);
+
+  useEffect(() => {
+    const prev = prevPrice.current;
+    prevPrice.current = price;
+    if (prev === price || prev <= 0 || price <= 0) return;
+    setOddFlash(price > prev ? "up" : "down");
+    const timer = window.setTimeout(() => setOddFlash(""), 700);
+    return () => window.clearTimeout(timer);
+  }, [price]);
+
+  function requestRemove() {
+    if (leaving) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      onRemove();
+      return;
+    }
+    setLeaving(true);
+  }
+
   return (
-    <div className="slip-pick">
+    <div
+      className={`slip-pick${leaving ? " is-leaving" : ""}`}
+      onAnimationEnd={(event) => {
+        if (leaving && event.animationName === "slip-pick-out") onRemove();
+      }}
+    >
       <div className="slip-pick-top">
         <strong>{label.replace("  -  ", " vs ")}</strong>
-        <button type="button" className="slip-remove" onClick={onRemove} aria-label="Remove">
+        <button type="button" className="slip-remove" onClick={requestRemove} aria-label="Remove">
           ×
         </button>
       </div>
@@ -53,15 +114,16 @@ function SlipPickRow({
           <span className="slip-dot" aria-hidden />
           <span className="slip-pick-name">{selection}</span>
         </div>
-        <b className="slip-odd">{formatOdd(price)}</b>
+        <b className={`slip-odd${oddFlash ? ` flash-${oddFlash}` : ""}`}>{formatOdd(price)}</b>
       </div>
     </div>
   );
 }
 
 export function BetSlip() {
-  const { active, setActive, picks, counts, removePick, clearSlip } = useSlip();
+  const { active, setActive, picks, counts, removePick, clearSlip, replacePicks } = useSlip();
   const { session, openAuth, setWallet } = useAuth();
+  const notify = useNotify();
   const [stake, setStake] = useState("20");
   const [acceptChanges, setAcceptChanges] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -73,6 +135,8 @@ export function BetSlip() {
   const [checked, setChecked] = useState<BetReceiptDto | null>(null);
   const [checkError, setCheckError] = useState("");
   const [checking, setChecking] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
 
   const stakeValue = Number(stake) || 0;
   const totals = useMemo(
@@ -86,12 +150,41 @@ export function BetSlip() {
     setChecking(true);
     setCheckError("");
     try {
-      setChecked(await api.checkCoupon(code));
+      const coupon = await api.checkCoupon(code);
+      setChecked(coupon);
+      notify.success("Coupon found", { title: coupon.status });
     } catch (err) {
       setChecked(null);
-      setCheckError(err instanceof Error ? err.message : "Coupon not found");
+      const message = err instanceof Error ? err.message : "Coupon not found";
+      setCheckError(message);
+      notify.error(message);
     } finally {
       setChecking(false);
+    }
+  }
+
+  async function loadCoupon(code: string) {
+    setLoading(true);
+    setLoadError("");
+    try {
+      const coupon = await api.loadCoupon(code);
+      const nextPicks = receiptToPicks(coupon);
+      if (nextPicks.length === 0) {
+        const message = "Coupon has no selectable picks to restore";
+        setLoadError(message);
+        notify.warn(message);
+        return;
+      }
+      replacePicks(nextPicks);
+      setStake(coupon.stake);
+      setLoadCode("");
+      notify.success("Coupon loaded");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Coupon not found";
+      setLoadError(message);
+      notify.error(message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -125,7 +218,7 @@ export function BetSlip() {
                 <div className="slip-load-head">
                   <span>
                     Load Coupon:
-                    <i className="slip-info" title="Enter a coupon number to look it up">
+                    <i className="slip-info" title="Restore selections from a booked or placed coupon onto this slip">
                       i
                     </i>
                   </span>
@@ -146,16 +239,20 @@ export function BetSlip() {
                     placeholder="Coupon number ..."
                     value={loadCode}
                     onChange={(event) => setLoadCode(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && loadCode.trim()) void loadCoupon(loadCode);
+                    }}
                   />
                   <button
                     type="button"
                     className="slip-load-btn"
-                    disabled={checking || !loadCode.trim()}
-                    onClick={() => void lookupCoupon(loadCode)}
+                    disabled={loading || !loadCode.trim()}
+                    onClick={() => void loadCoupon(loadCode)}
                   >
-                    {checking ? "..." : "LOAD"}
+                    {loading ? "..." : "LOAD"}
                   </button>
                 </div>
+                {loadError ? <p className="auth-error">{loadError}</p> : null}
               </div>
             </>
           ) : (
@@ -242,7 +339,10 @@ export function BetSlip() {
               {error && <p className="auth-error">{error}</p>}
 
               <div className="slip-actions">
-                <button type="button" className="slip-clear" onClick={clearSlip}>
+                <button type="button" className="slip-clear" onClick={() => {
+                  clearSlip();
+                  notify.info("Slip cleared");
+                }}>
                   CLEAR SLIP
                 </button>
                 <button
@@ -250,39 +350,60 @@ export function BetSlip() {
                   className="slip-place"
                   disabled={busy || stakeValue < 1}
                   onClick={async () => {
-                    if (!session) {
-                      openAuth("login");
-                      return;
-                    }
                     setBusy(true);
                     setError("");
+                    const selections = picks.map((pick) => ({
+                      fixtureId: pick.fixtureId,
+                      marketId: pick.quote.marketId,
+                      outcomeId: pick.quote.outcomeId,
+                      playerId: pick.quote.playerId,
+                      marketName: pick.marketName,
+                      selection: pick.selection,
+                      fixtureLabel: pick.label,
+                      placedOdds: pick.quote.housePrice,
+                    }));
                     try {
-                      const booked = await api.placeBet({
-                        stake: stakeValue,
-                        acceptChanges,
-                        selections: picks.map((pick) => ({
-                          fixtureId: pick.fixtureId,
-                          marketId: pick.quote.marketId,
-                          outcomeId: pick.quote.outcomeId,
-                          playerId: pick.quote.playerId,
-                          marketName: pick.marketName,
-                          selection: pick.selection,
-                          fixtureLabel: pick.label,
-                          placedOdds: pick.quote.housePrice,
-                        })),
-                      });
-                      setReceipt(booked);
-                      clearSlip();
-                      const wallet = await api.wallet();
-                      setWallet(wallet);
+                      if (session) {
+                        const placed = await api.placeBet({
+                          stake: stakeValue,
+                          acceptChanges,
+                          selections,
+                        });
+                        setReceipt(placed);
+                        clearSlip();
+                        const wallet = await api.wallet();
+                        setWallet(wallet);
+                        notify.success("Bet Placed Successfully!");
+                      } else {
+                        const booked = await api.bookCoupon({
+                          stake: stakeValue,
+                          acceptChanges,
+                          selections,
+                        });
+                        setReceipt(booked);
+                        notify.success("Coupon Booked Successfully!");
+                      }
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : "Could not place bet");
+                      const message =
+                        err instanceof Error
+                          ? err.message
+                          : session
+                            ? "Could not place bet"
+                            : "Could not book coupon";
+                      setError(message);
+                      notify.error(message);
                     } finally {
                       setBusy(false);
                     }
                   }}
                 >
-                  {busy ? "PLACING..." : "PLACE BET"}
+                  {busy
+                    ? session
+                      ? "PLACING..."
+                      : "BOOKING..."
+                    : session
+                      ? "PLACE BET"
+                      : "BOOK"}
                 </button>
               </div>
             </>
@@ -311,64 +432,124 @@ export function BetSlip() {
       </div>
 
       {receipt && (
-        <div className="auth-overlay" onClick={() => setReceipt(null)}>
-          <div className="receipt-card" onClick={(event) => event.stopPropagation()}>
-            <button type="button" className="receipt-close" onClick={() => setReceipt(null)}>
+        <div className="auth-overlay">
+          <div
+            className={`receipt-card${receipt.kind === "BOOKED" ? " receipt-booked" : ""}`}
+          >
+            <button type="button" className="modal-close" onClick={() => setReceipt(null)} aria-label="Close">
               ×
             </button>
-            <h2>Congratulations! Your bet is booked.</h2>
+            <h2>
+              {receipt.kind === "BOOKED" ? "Congrats! Your bet is booked." : "Congratulations! Your bet is placed."}
+            </h2>
             <div className="receipt-grid">
-              <dl>
+              <dl className="receipt-summary">
                 <div>
                   <dt>Total Odd</dt>
                   <dd>{receipt.combinedOdds}</dd>
                 </div>
                 <div>
                   <dt>Stake</dt>
-                  <dd>{receipt.stake}</dd>
+                  <dd>{receipt.stake} ETB</dd>
                 </div>
                 <div>
-                  <dt>Net Stake</dt>
-                  <dd>{receipt.netStake}</dd>
+                  <dt>NetStake</dt>
+                  <dd>{receipt.netStake} ETB</dd>
                 </div>
                 <div>
                   <dt>Win</dt>
-                  <dd>{receipt.possibleWin}</dd>
+                  <dd>{receipt.possibleWin} ETB</dd>
                 </div>
                 <div>
                   <dt>Bonus</dt>
-                  <dd>{receipt.bonus}</dd>
+                  <dd>{receipt.bonus} ETB</dd>
                 </div>
                 <div>
-                  <dt>Net Payout</dt>
-                  <dd>{receipt.possibleWin}</dd>
+                  <dt>Net Pay</dt>
+                  <dd>
+                    <strong>{receipt.possibleWin} ETB</strong>
+                  </dd>
                 </div>
               </dl>
               <div className="receipt-code">
-                <b>{receipt.couponCode}</b>
-                <p>Please keep this coupon number.</p>
+                <div className="receipt-code-row">
+                  <b>{receipt.couponCode}</b>
+                  <button
+                    type="button"
+                    className="receipt-copy"
+                    title="Copy ticket"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(receipt.couponCode).then(
+                        () => notify.success("Copied!"),
+                        () => notify.error("Could not copy"),
+                      );
+                    }}
+                  >
+                    Copy
+                  </button>
+                </div>
+                {receipt.kind === "BOOKED" ? (
+                  <>
+                    <p>
+                      Please find a nearby Maraki shop and deposit using the above ticket number. Thank you.
+                    </p>
+                    <p className="receipt-warn">
+                      Bets after kickoff are invalid. Terms and conditions apply.
+                    </p>
+                  </>
+                ) : (
+                  <p>Please keep this coupon number.</p>
+                )}
               </div>
             </div>
-            <table className="receipt-table">
-              <thead>
-                <tr>
-                  <th>Match</th>
-                  <th>Market</th>
-                  <th>Your Pick</th>
-                  <th>Odd</th>
-                </tr>
-              </thead>
-              <tbody>
-                {receipt.selections.map((item) => (
-                  <tr key={`${item.fixtureLabel}-${item.selection}`}>
-                    <td>{item.fixtureLabel}</td>
-                    <td>{item.marketName}</td>
-                    <td>{item.selection}</td>
-                    <td>{item.placedOdds}</td>
+            <div className="receipt-table-wrap">
+              <table className="receipt-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Match</th>
+                    <th>Market</th>
+                    <th>Your Pick</th>
+                    <th>ODD</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {receipt.selections.map((item) => (
+                    <tr key={`${item.fixtureLabel}-${item.selection}`}>
+                      <td>
+                        {item.startTime
+                          ? new Date(item.startTime).toLocaleString(undefined, {
+                              month: "short",
+                              day: "2-digit",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "—"}
+                      </td>
+                      <td>{item.fixtureLabel.replace("  -  ", " vs ")}</td>
+                      <td>{item.marketName}</td>
+                      <td>{item.selection}</td>
+                      <td>{item.placedOdds}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {receipt.kind === "BOOKED" && !session ? (
+              <div className="receipt-cta">
+                <h3>BET ONLINE</h3>
+                <p>Create an account to bet online and unlock more bonuses.</p>
+                <div className="receipt-cta-actions">
+                  <button type="button" className="ghost" onClick={() => openAuth("login")}>
+                    LOGIN
+                  </button>
+                  <button type="button" className="primary" onClick={() => openAuth("register")}>
+                    REGISTER
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
       )}

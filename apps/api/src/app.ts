@@ -26,6 +26,7 @@ import type { SyncScheduler } from "./modules/sync/sync.scheduler.js";
 import type { SyncService } from "./modules/sync/sync.service.js";
 import { OrgService } from "./modules/org/org.service.js";
 import { orgRoutes } from "./modules/org/org.routes.js";
+import { cashierRoutes } from "./modules/cashier/cashier.routes.js";
 
 export function createApp(deps: {
   catalog: CatalogService;
@@ -40,7 +41,7 @@ export function createApp(deps: {
   const app = express();
   const identity = new IdentityService(prisma);
   const wallet = new WalletService(prisma);
-  const betting = new BettingService(prisma, new OddsCache(), deps.repo);
+  const betting = new BettingService(prisma, new OddsCache());
   const admin = new AdminService(prisma);
   const org = new OrgService(prisma);
   app.use(
@@ -58,6 +59,7 @@ export function createApp(deps: {
   app.use("/api/v1", bettingRoutes(identity, betting, deps.settlement));
   app.use("/api/v1", adminRoutes(identity, admin, betting, wallet, deps.settlement));
   app.use("/api/v1", orgRoutes(identity, org));
+  app.use("/api/v1", cashierRoutes(identity, betting, prisma));
   app.use("/api/v1", syncRoutes(identity, deps.syncService, deps.syncScheduler));
   app.use("/api/v1/odds", oddsRoutes(deps.odds));
 

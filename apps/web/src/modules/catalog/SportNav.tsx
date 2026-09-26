@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import type { SportDto, TournamentDto } from "@maraki/shared";
 import { eatYmd, shiftEatYmd } from "@maraki/shared";
@@ -33,7 +33,6 @@ function matchesTopOffer(tournamentName: string, offerName: string) {
 
 function SportNavInner() {
   const path = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const { setMatchId } = useSlip();
   const { selectedIds, toggleTournament, toggleTournaments, clearSelection } = useBoardFilters();
@@ -69,23 +68,6 @@ function SportNavInner() {
     setOpenOffer(true);
   }, [path]);
 
-  useEffect(() => {
-    if (selectedIds.size === 0 || tournaments.length === 0) return;
-    setOpenCountries((current) => {
-      const merged = new Set(current);
-      let changed = false;
-      for (const tournament of tournaments) {
-        if (!selectedIds.has(tournament.id)) continue;
-        const country = tournament.categoryName ?? "Other";
-        if (!merged.has(country)) {
-          merged.add(country);
-          changed = true;
-        }
-      }
-      return changed ? merged : current;
-    });
-  }, [selectedIds, tournaments]);
-
   const known = new Set(sports.map((sport) => sport.slug));
   const catalog = Array.isArray(tournaments) ? tournaments : [];
   const q = sportQuery.trim().toLowerCase();
@@ -116,24 +98,10 @@ function SportNavInner() {
   const sportHref = (slug: string, next: Record<string, string | undefined> = {}) =>
     boardHref(`/sports/${slug}`, params, next);
 
-  function expandFor(matches: TournamentDto[]) {
-    if (matches.length === 0) return;
-    setOpenSoccer(true);
-    setOpenCountries((current) => {
-      const merged = new Set(current);
-      for (const tournament of matches) merged.add(tournament.categoryName ?? "Other");
-      return merged;
-    });
-    if (!path.startsWith("/sports/soccer")) {
-      router.push(sportHref("soccer", { window: windowId || "all" }));
-    }
-  }
-
   function toggleCountry(leagues: TournamentDto[]) {
     const ids = leagues.map((item) => item.id);
     const someSelected = ids.some((id) => selectedIds.has(id));
     toggleTournaments(ids, someSelected ? "remove" : "add");
-    if (!someSelected) expandFor(leagues);
   }
 
   function countryState(leagues: TournamentDto[]) {
@@ -156,14 +124,10 @@ function SportNavInner() {
     const ids = matches.map((item) => item.id);
     const allSelected = ids.length > 0 && ids.every((id) => selectedIds.has(id));
     toggleTournaments(ids, allSelected ? "remove" : "add");
-    if (!allSelected) expandFor(matches);
   }
 
   function onToggleTournament(id: number) {
-    const adding = !selectedIds.has(id);
     toggleTournament(id);
-    const tournament = catalog.find((item) => item.id === id);
-    if (adding && tournament) expandFor([tournament]);
   }
 
   return (

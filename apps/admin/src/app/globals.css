@@ -1240,6 +1240,28 @@ button.danger,
 .drawer-head h2 {
   margin: 0;
   font-size: 16px;
+  padding-right: 8px;
+}
+
+.drawer-close {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+}
+
+.drawer-close:hover {
+  color: var(--ink);
+  border-color: #cbd5e1;
 }
 
 .drawer-body {

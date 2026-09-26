@@ -45,6 +45,15 @@ export function bettingRoutes(identity: IdentityService, betting: BettingService
     }),
   );
 
+  router.post(
+    "/bookings",
+    asyncHandler(async (req, res) => {
+      const body = placeSchema.safeParse(req.body);
+      if (!body.success) throw new HttpError(400, body.error.issues[0]?.message ?? "Invalid booking");
+      res.status(201).json({ data: await betting.book(body.data) });
+    }),
+  );
+
   router.get(
     "/bets",
     asyncHandler(async (req, res) => {
@@ -58,6 +67,13 @@ export function bettingRoutes(identity: IdentityService, betting: BettingService
     "/coupons/:code",
     asyncHandler(async (req, res) => {
       res.json({ data: await betting.getByCoupon(req.params.code) });
+    }),
+  );
+
+  router.get(
+    "/coupons/:code/load",
+    asyncHandler(async (req, res) => {
+      res.json({ data: await betting.getForLoad(req.params.code) });
     }),
   );
 

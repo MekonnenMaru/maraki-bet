@@ -90,6 +90,15 @@ model Fixture {
   @@index([visible, bettingEnabled])
 }
 
+/// Last-known priced quotes per fixture (durable; Redis remains the hot cache).
+model OddsSnapshot {
+  fixtureId  String   @id @db.VarChar(64)
+  quotesJson Json
+  updatedAt  DateTime @updatedAt
+
+  @@index([updatedAt])
+}
+
 model Market {
   id             Int       @id
   provider       String    @default("oddspapi") @db.VarChar(32)
@@ -316,6 +325,8 @@ model Bet {
   couponCode    String         @unique @db.VarChar(32)
   type          String         @db.VarChar(16)
   status        String         @default("ACCEPTED") @db.VarChar(16)
+  /** ONLINE = player wallet; CASH = shop desk (no wallet debit/credit until redeem). */
+  channel       String         @default("ONLINE") @db.VarChar(16)
   stake         Decimal        @db.Decimal(18, 2)
   vat           Decimal        @db.Decimal(18, 2)
   netStake      Decimal        @db.Decimal(18, 2)
@@ -329,6 +340,7 @@ model Bet {
   selections    BetSelection[]
 
   @@index([userId, createdAt])
+  @@index([channel, status])
 }
 
 model BetSelection {
@@ -346,5 +358,45 @@ model BetSelection {
   status       String  @default("PENDING") @db.VarChar(16)
 
   @@index([betId])
+  @@index([fixtureId])
+}
+
+/// Guest / shop booking — unpaid until a cashier places it.
+model BookedCoupon {
+  id            String                   @id @default(cuid())
+  couponCode    String                   @unique @db.VarChar(32)
+  status        String                   @default("BOOKED") @db.VarChar(16)
+  type          String                   @db.VarChar(16)
+  stake         Decimal                  @db.Decimal(18, 2)
+  vat           Decimal                  @db.Decimal(18, 2)
+  netStake      Decimal                  @db.Decimal(18, 2)
+  combinedOdds  Decimal                  @db.Decimal(12, 4)
+  bonus         Decimal                  @default(0) @db.Decimal(18, 2)
+  possibleWin   Decimal                  @db.Decimal(18, 2)
+  acceptChanges Boolean                  @default(true)
+  expiresAt     DateTime
+  placedBetId   String?                  @unique @db.VarChar(64)
+  createdAt     DateTime                 @default(now())
+  selections    BookedCouponSelection[]
+
+  @@index([status, createdAt])
+  @@index([expiresAt])
+}
+
+model BookedCouponSelection {
+  id           String       @id @default(cuid())
+  bookingId    String
+  booking      BookedCoupon @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  fixtureId    String       @db.VarChar(64)
+  marketId     Int
+  outcomeId    Int
+  playerId     Int          @default(0)
+  marketName   String       @db.VarChar(128)
+  selection    String       @db.VarChar(128)
+  fixtureLabel String       @db.VarChar(255)
+  placedOdds   Decimal      @db.Decimal(12, 4)
+  startTime    DateTime?
+
+  @@index([bookingId])
   @@index([fixtureId])
 }

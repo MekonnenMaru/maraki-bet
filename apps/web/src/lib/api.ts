@@ -85,8 +85,11 @@ export const api = {
     request<WalletDto>("/api/v1/wallet/deposit", { method: "POST", body: JSON.stringify({ amount }) }),
   placeBet: (body: { stake: number; acceptChanges: boolean; selections: PlaceBetSelection[] }) =>
     request<BetReceiptDto>("/api/v1/bets", { method: "POST", body: JSON.stringify(body) }),
+  bookCoupon: (body: { stake: number; acceptChanges: boolean; selections: PlaceBetSelection[] }) =>
+    request<BetReceiptDto>("/api/v1/bookings", { method: "POST", body: JSON.stringify(body) }),
   myBets: () => get<BetReceiptDto[]>("/api/v1/bets"),
   checkCoupon: (code: string) => get<BetReceiptDto>(`/api/v1/coupons/${encodeURIComponent(code.trim())}`),
+  loadCoupon: (code: string) => get<BetReceiptDto>(`/api/v1/coupons/${encodeURIComponent(code.trim())}/load`),
   testSettle: (code: string, outcome: TestSettleOutcome) =>
     request<BetReceiptDto>(`/api/v1/bets/${encodeURIComponent(code)}/test-settle`, {
       method: "POST",

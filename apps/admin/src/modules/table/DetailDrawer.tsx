@@ -57,17 +57,12 @@ export function DetailDrawer({
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
     const previous = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    window.addEventListener("keydown", onKey);
     return () => {
       document.body.style.overflow = previous;
-      window.removeEventListener("keydown", onKey);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const persistWidth = useCallback(
     (next: number) => {
@@ -118,7 +113,7 @@ export function DetailDrawer({
       aria-modal="true"
       aria-label={title}
     >
-      <button type="button" className="drawer-backdrop" aria-label="Close detail" onClick={onClose} />
+      <div className="drawer-backdrop" aria-hidden="true" />
       <aside className={`drawer-panel${size === "wide" ? " wide" : ""}`} style={{ width }}>
         <button
           type="button"
@@ -129,8 +124,8 @@ export function DetailDrawer({
         />
         <header className="drawer-head">
           <h2>{title}</h2>
-          <button type="button" className="ghost" onClick={onClose}>
-            Close
+          <button type="button" className="drawer-close" onClick={onClose} aria-label="Close">
+            ×
           </button>
         </header>
         <div className="drawer-body">{children}</div>

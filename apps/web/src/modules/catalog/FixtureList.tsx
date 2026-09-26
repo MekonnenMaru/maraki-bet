@@ -46,7 +46,7 @@ function isBoardVisible(fixture: FixtureCardDto, nowMs = Date.now()) {
 }
 
 function FixtureGroups({ fixtures }: { fixtures: FixtureCardDto[] }) {
-  const { query, matchId } = useSlip();
+  const { query, matchId, picks } = useSlip();
   const { selectedIds } = useBoardFilters();
   const [openId, setOpenId] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
@@ -96,6 +96,13 @@ function FixtureGroups({ fixtures }: { fixtures: FixtureCardDto[] }) {
             const label = `${fixture.home?.name ?? "Home"}  -  ${fixture.away?.name ?? "Away"}`;
             const when = kickoff(fixture.startTime);
             const extra = Math.max(fixture.extraMarkets, 0);
+            const boardOutcomeIds = new Set(
+              [one, draw, two, oneX, xTwo, oneTwo]
+                .filter((quote): quote is OutcomeQuoteDto => Boolean(quote))
+                .map((quote) => quote.outcomeId),
+            );
+            const slipPick = picks.find((pick) => pick.fixtureId === fixture.id);
+            const moreSelected = Boolean(slipPick && !boardOutcomeIds.has(slipPick.quote.outcomeId));
             return (
               <div key={fixture.id} className={openId === fixture.id ? "row-wrap open" : "row-wrap"}>
                 <article className="row">
@@ -139,7 +146,8 @@ function FixtureGroups({ fixtures }: { fixtures: FixtureCardDto[] }) {
                   />
                   <button
                     type="button"
-                    className="more"
+                    className={moreSelected ? "more on" : "more"}
+                    title={moreSelected ? `Selected: ${slipPick?.selection}` : undefined}
                     onClick={() => setOpenId((current) => (current === fixture.id ? null : fixture.id))}
                   >
                     +{extra}

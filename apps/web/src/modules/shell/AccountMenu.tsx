@@ -91,10 +91,9 @@ export function AccountMenu() {
         </div>
       )}
       {depositOpen && (
-        <div className="auth-overlay" onClick={() => setDepositOpen(false)}>
+        <div className="auth-overlay">
           <form
             className="auth-card"
-            onClick={(event) => event.stopPropagation()}
             onSubmit={async (event) => {
               event.preventDefault();
               setBusy(true);
@@ -109,6 +108,14 @@ export function AccountMenu() {
               }
             }}
           >
+            <button
+              type="button"
+              className="modal-close"
+              onClick={() => setDepositOpen(false)}
+              aria-label="Close"
+            >
+              ×
+            </button>
             <h2>Deposit</h2>
             <label>
               Amount ({session.wallet.currency})
@@ -116,9 +123,6 @@ export function AccountMenu() {
             </label>
             {error && <p className="auth-error">{error}</p>}
             <div className="auth-card-actions">
-              <button type="button" onClick={() => setDepositOpen(false)}>
-                Cancel
-              </button>
               <button type="submit" className="primary" disabled={busy}>
                 {busy ? "Please wait..." : "Deposit"}
               </button>

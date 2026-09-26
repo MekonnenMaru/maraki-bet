@@ -128,7 +128,7 @@ export class SettlementService {
       });
       if (claimed.count === 0) return null;
 
-      if (verdict.payout > 0) {
+      if (verdict.payout > 0 && bet.channel !== "CASH") {
         const credit = new Prisma.Decimal(verdict.payout.toFixed(2));
         const wallet = await tx.wallet.update({
           where: { userId: bet.userId },

@@ -6,11 +6,12 @@
     "node": ">=20"
   },
   "scripts": {
-    "dev": "pnpm --parallel --filter @maraki/api --filter @maraki/web --filter @maraki/admin dev",
+    "dev": "pnpm --parallel --filter @maraki/api --filter @maraki/web --filter @maraki/admin --filter @maraki/cashier dev",
     "dev:api": "pnpm --filter @maraki/api dev",
     "dev:web": "pnpm --filter @maraki/web dev",
     "dev:admin": "pnpm --filter @maraki/admin dev",
-    "build": "pnpm --filter @maraki/shared build && pnpm --filter @maraki/api build && pnpm --filter @maraki/web build && pnpm --filter @maraki/admin build",
+    "dev:cashier": "pnpm --filter @maraki/cashier dev",
+    "build": "pnpm --filter @maraki/shared build && pnpm --filter @maraki/api build && pnpm --filter @maraki/web build && pnpm --filter @maraki/admin build && pnpm --filter @maraki/cashier build",
     "db:up": "docker compose up -d",
     "db:generate": "pnpm --filter @maraki/api db:generate",
     "db:migrate": "pnpm --filter @maraki/api db:migrate",
